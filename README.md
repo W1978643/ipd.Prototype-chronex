@@ -2,7 +2,7 @@
 
 A student productivity web application built with Flask — featuring task management, focus timer, notes, budget tracking, and gamification.
 
-**Final Year Project** | University of Westminster | 6COSC022W
+Artur Socolnic| University of Westminster | 6COSC022W
 
 ---
 
@@ -63,7 +63,7 @@ http://localhost:5000
 
 ## Demo Account
 
-For testing purposes:
+For testing purposes (Registration Feature is 
 - **Username:** artur
 - **Password:** 123
 
@@ -98,6 +98,7 @@ chronex/
 
 University of Westminster  
 Final Year Project 2025-2026
+Artur Socolnic - Creator 
 
 ---
 
