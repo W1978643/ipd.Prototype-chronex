@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ==== Document Meta & Resources ==== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Timer - Chronex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ==== Cosmic Background ==== -->
+    <div class="cosmic-background"></div>
+    <div class="stars-decoration"></div>
+
+    <!-- ==== Site Header ==== -->
+    <header class="site-header">
+        <a href="{{ url_for('show_dashboard') }}" class="site-logo">Chronex</a>
+        <nav class="navigation-menu">
+            <a href="{{ url_for('show_dashboard') }}" class="navigation-link">Dashboard</a>
+            <a href="{{ url_for('show_tasks_page') }}" class="navigation-link">Tasks</a>
+            <a href="{{ url_for('show_notes_page') }}" class="navigation-link">Notes</a>
+            <a href="{{ url_for('show_focus_page') }}" class="navigation-link active">Focus</a>  <!-- Current page -->
+            <a href="{{ url_for('show_budget_page') }}" class="navigation-link">Budget</a>
+            <a href="{{ url_for('show_achievements_page') }}" class="navigation-link">Achievements</a>
+        </nav>
+        <div class="header-right-section">
+            <span class="logged-in-username">{{ current_user.username }}</span>
+            <a href="{{ url_for('show_settings_page') }}" class="navigation-link">Settings</a>
+            <a href="{{ url_for('handle_logout') }}" class="navigation-link">Logout</a>
+        </div>
+    </header>
+
+    <!-- ==== Main Content ==== -->
+    <main class="page-content">
+        <h1 class="page-title">Focus Timer</h1>
+        <p class="page-subtitle">Stay productive with timed focus sessions</p>
+
+        <!-- ==== Two-Column Layout ==== -->
+        <!-- Timer section on left, Focus Farm gamification on right -->
+        <div class="focus-page-layout">
+            
+            <!-- ==== Timer Section (Left Column) ==== -->
+            <!-- 
+                Countdown timer with start/pause/reset controls
+                Session duration selection buttons below
+            -->
+            <div class="timer-section">
+                <div class="card-heading">Timer</div>
+                
+                <!-- Large Countdown Display -->
+                <!-- Updated by JavaScript every second when running -->
+                <div class="timer-countdown-display" id="countdownDisplay">25:00</div>
+                
+                <!-- Timer Control Buttons -->
+                <div class="timer-control-buttons">
+                    <button class="button button-success" id="startTimerButton" onclick="startFocusTimer()">Start</button>
+                    <button class="button button-secondary" id="stopTimerButton" onclick="pauseFocusTimer()" disabled>Pause</button>
+                    <button class="button button-danger" id="resetTimerButton" onclick="resetFocusTimer()">Reset</button>
+                </div>
+                
+                <!-- Session Duration Selection -->
+                <!-- Preset options: 5s demo, 5min, 25min (Pomodoro standard) -->
+                <div class="session-duration-options">
+                    <button class="session-duration-button" onclick="selectSessionDuration(5)">5s (Demo)</button>
+                    <button class="session-duration-button" onclick="selectSessionDuration(300)">5 min</button>
+                    <button class="session-duration-button active" onclick="selectSessionDuration(1500)">25 min</button>
+                </div>
+            </div>
+
+            <!-- ==== Focus Farm Section (Right Column) ==== -->
+            <!-- 
+                Gamification mechanic - idle game style
+                Users earn stars by completing focus sessions
+                Stars passively generate energy which can be collected as points
+            -->
+            <div class="focus-farm-section">
+                <div class="focus-farm-heading">Focus Farm</div>
+                
+                <!-- Stars Earned Counter -->
+                <div class="stars-earned-display" id="starsEarnedDisplay">{{ stars_earned }}</div>
+                <div class="focus-farm-label">Stars Earned</div>
+                
+                <!-- Explanation Text -->
+                <div class="focus-farm-description">
+                    Complete focus sessions to earn stars. Each star produces 1 energy every 5 seconds. 
+                    Collect energy to boost your points!
+                </div>
+                
+                <!-- Energy Bank Display -->
+                <!-- Shows accumulated energy ready to be collected -->
+                <div class="energy-bank-display">
+                    <span class="bank-display-label">Energy Bank:</span>
+                    <span class="bank-display-value" id="energyBankValue">{{ energy_bank_balance }}</span>
+                </div>
+                
+                <!-- Collect Energy Button -->
+                <!-- Converts accumulated energy into focus points -->
+                <button class="button button-success margin-top-medium" id="collectPointsButton" onclick="collectEnergyPoints()">
+                    Collect Energy (+{{ energy_bank_balance }} points)
+                </button>
+                
+                <!-- Total Points Display -->
+                <div class="margin-top-medium text-faded">
+                    Total Focus Points: <span id="focusPointsValue">{{ total_focus_points }}</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==== Session Complete Modal ==== -->
+    <!-- 
+        Popup displayed when timer reaches zero
+        Celebrates completion and shows star earned
+    -->
+    <div class="modal-backdrop" id="sessionCompleteModal">
+        <div class="modal-window align-center">
+            <div class="modal-heading">Session Complete!</div>
+            <p class="text-faded margin-bottom-medium">Great work! You earned a star.</p>
+            <div class="stars-earned-display">+1</div>
+            <div class="focus-farm-label">Star Earned</div>
+            <button class="button button-primary margin-top-medium" onclick="hideSessionCompleteModal()">Continue</button>
+        </div>
+    </div>
+
+    <!-- ==== Flash Messages ==== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="toast-notification {{ category }}" id="notificationToast">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ==== JavaScript ==== -->
+    <script>
+        // ==========================================
+        //   TIMER STATE VARIABLES
+        // ==========================================
+
+        let countdownInterval = null;          // Interval reference for countdown tick
+        let secondsRemaining = 1500;           // Current time remaining (default: 25min = 1500s)
+        let selectedSessionDuration = 1500;    // Selected session duration in seconds
+        let currentFocusPoints = {{ total_focus_points }};  // User's total points from server
+        let currentStarsEarned = {{ stars_earned }};        // User's stars from server
+        let timerIsRunning = false;            // Timer running state flag
+
+        // ==========================================
+        //   UTILITY FUNCTIONS
+        // ==========================================
+
+        /**
+         * Convert total seconds to MM:SS display format
+         * @param {number} totalSeconds - Time in seconds
+         * @returns {string} Formatted time string (e.g., "25:00")
+         */
+        function formatSecondsAsTime(totalSeconds) {
+            const displayMinutes = Math.floor(totalSeconds / 60);
+            const displaySeconds = totalSeconds % 60;
+            return `${displayMinutes}:${String(displaySeconds).padStart(2, '0')}`;
+        }
+
+        /**
+         * Refresh the timer display element
+         * Also toggles .active class for visual feedback when running
+         */
+        function updateTimerDisplay() {
+            const displayElement = document.getElementById('countdownDisplay');
+            displayElement.textContent = formatSecondsAsTime(secondsRemaining);
+            displayElement.classList.toggle('active', timerIsRunning);  // Purple text when active
+        }
+
+        // ==========================================
+        //   SESSION DURATION SELECTION
+        // ==========================================
+
+        /**
+         * Set timer duration from preset buttons
+         * @param {number} durationInSeconds - Session length in seconds
+         */
+        function selectSessionDuration(durationInSeconds) {
+            if (timerIsRunning) return;  // Don't allow changes while timer is running
+            
+            selectedSessionDuration = durationInSeconds;
+            secondsRemaining = durationInSeconds;
+            updateTimerDisplay();
+            
+            // Update button active states - highlight selected duration
+            document.querySelectorAll('.session-duration-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+
+        // ==========================================
+        //   TIMER CONTROL FUNCTIONS
+        // ==========================================
+
+        /**
+         * Start the countdown timer
+         * Begins 1-second interval that decrements remaining time
+         */
+        function startFocusTimer() {
+            if (timerIsRunning) return;  // Prevent double-start
+            
+            timerIsRunning = true;
+            document.getElementById('startTimerButton').disabled = true;
+            document.getElementById('stopTimerButton').disabled = false;
+            updateTimerDisplay();
+            
+            // Start countdown - ticks every 1000ms (1 second)
+            countdownInterval = setInterval(function() {
+                secondsRemaining--;
+                updateTimerDisplay();
+                
+                // Timer reached zero - session complete
+                if (secondsRemaining <= 0) {
+                    clearInterval(countdownInterval);
+                    timerIsRunning = false;
+                    handleSessionComplete();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Pause the running timer
+         * Preserves remaining time for resumption
+         */
+        function pauseFocusTimer() {
+            if (!timerIsRunning) return;
+            
+            clearInterval(countdownInterval);
+            timerIsRunning = false;
+            document.getElementById('startTimerButton').disabled = false;
+            document.getElementById('stopTimerButton').disabled = true;
+            updateTimerDisplay();
+        }
+
+        /**
+         * Reset timer to selected duration
+         * Clears any running countdown
+         */
+        function resetFocusTimer() {
+            clearInterval(countdownInterval);
+            timerIsRunning = false;
+            secondsRemaining = selectedSessionDuration;
+            document.getElementById('startTimerButton').disabled = false;
+            document.getElementById('stopTimerButton').disabled = true;
+            updateTimerDisplay();
+        }
+
+        // ==========================================
+        //   SESSION COMPLETION
+        // ==========================================
+
+        /**
+         * Handle successful session completion
+         * Sends completion to server and shows celebration modal
+         */
+        function handleSessionComplete() {
+            // Calculate minutes completed (minimum 1 for demo mode)
+            const completedMinutes = Math.max(1, Math.floor(selectedSessionDuration / 60));
+            
+            // Send completion data to server via API
+            fetch('/focus/complete-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ minutes: completedMinutes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update local display with server response
+                    currentStarsEarned = data.stars;
+                    currentFocusPoints = data.points;
+                    document.getElementById('starsEarnedDisplay').textContent = currentStarsEarned;
+                    document.getElementById('focusPointsValue').textContent = currentFocusPoints;
+                    
+                    // Show celebration modal
+                    document.getElementById('sessionCompleteModal').classList.add('active');
+                }
+            });
+            
+            // Reset timer for next session
+            document.getElementById('startTimerButton').disabled = false;
+            document.getElementById('stopTimerButton').disabled = true;
+            secondsRemaining = selectedSessionDuration;
+            updateTimerDisplay();
+        }
+
+        /**
+         * Hide the session complete modal
+         */
+        function hideSessionCompleteModal() {
+            document.getElementById('sessionCompleteModal').classList.remove('active');
+        }
+
+        // ==========================================
+        //   ENERGY COLLECTION
+        // ==========================================
+
+        /**
+         * Convert accumulated energy to focus points
+         * Updates display and sends to server
+         */
+        function collectEnergyPoints() {
+            const energyAmount = parseInt(document.getElementById('energyBankValue').textContent);
+            if (energyAmount <= 0) return;  // Nothing to collect
+            
+            // Update display immediately for responsive UX
+            currentFocusPoints += energyAmount;
+            document.getElementById('focusPointsValue').textContent = currentFocusPoints;
+            document.getElementById('energyBankValue').textContent = '0';
+            document.getElementById('collectPointsButton').textContent = 'Collect Energy (+0 points)';
+            
+            // Send to server to persist
+            fetch('/focus/add-points', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ points: energyAmount })
+            });
+        }
+
+        // ==========================================
+        //   EVENT LISTENERS
+        // ==========================================
+
+        // Close modal when clicking backdrop
+        document.getElementById('sessionCompleteModal').addEventListener('click', function(clickEvent) {
+            if (clickEvent.target === this) hideSessionCompleteModal();
+        });
+
+        // ==========================================
+        //   TOAST NOTIFICATION
+        // ==========================================
+
+        const toastElement = document.getElementById('notificationToast');
+        if (toastElement) {
+            setTimeout(() => toastElement.classList.add('show'), 100);
+            setTimeout(() => toastElement.classList.remove('show'), 4000);
+        }
+
+        // ==========================================
+        //   INITIALIZATION
+        // ==========================================
+
+        // Set initial display on page load
+        updateTimerDisplay();
+    </script>
+</body>
+</html>

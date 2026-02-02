@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ==== Document Meta & Resources ==== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Chronex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ==== Cosmic Background ==== -->
+    <!-- Decorative fixed background elements creating space theme -->
+    <div class="cosmic-background"></div>
+    <div class="stars-decoration"></div>
+
+    <!-- ==== Site Header ==== -->
+    <!-- 
+        Fixed navigation bar present on all authenticated pages
+        Contains: Logo, Navigation Links, User Info, Logout
+    -->
+    <header class="site-header">
+        <!-- Logo - links back to dashboard -->
+        <a href="{{ url_for('show_dashboard') }}" class="site-logo">Chronex</a>
+        
+        <!-- Main Navigation Menu -->
+        <nav class="navigation-menu">
+            <a href="{{ url_for('show_dashboard') }}" class="navigation-link active">Dashboard</a>  <!-- Current page highlighted -->
+            <a href="{{ url_for('show_tasks_page') }}" class="navigation-link">Tasks</a>
+            <a href="{{ url_for('show_notes_page') }}" class="navigation-link">Notes</a>
+            <a href="{{ url_for('show_focus_page') }}" class="navigation-link">Focus</a>
+            <a href="{{ url_for('show_budget_page') }}" class="navigation-link">Budget</a>
+            <a href="{{ url_for('show_achievements_page') }}" class="navigation-link">Achievements</a>
+        </nav>
+        
+        <!-- Right Section - User info and account actions -->
+        <div class="header-right-section">
+            <span class="logged-in-username">{{ current_user.username }}</span>
+            <a href="{{ url_for('show_settings_page') }}" class="navigation-link">Settings</a>
+            <a href="{{ url_for('handle_logout') }}" class="navigation-link">Logout</a>
+        </div>
+    </header>
+
+    <!-- ==== Main Dashboard Content ==== -->
+    <main class="page-content">
+        <!-- Page Header - Personalized welcome message -->
+        <h1 class="page-title">Welcome back, {{ current_user.username|capitalize }}!</h1>
+        <p class="page-subtitle">Here's your productivity overview</p>
+
+        <!-- ==== Daily Progress Card ==== -->
+        <!-- 
+            Shows focus time completion towards daily goal
+            Progress bar width calculated server-side as percentage
+        -->
+        <div class="daily-progress-card margin-bottom-medium">
+            <div class="stats-card-heading">Daily Progress</div>
+            
+            <!-- Progress Bar - Width set dynamically from server data -->
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-filled" style="width: {{ progress_percentage }}%;"></div>
+                <span class="progress-percentage-text">{{ focus_minutes_today }}/{{ daily_focus_goal }} min</span>
+            </div>
+            
+            <!-- Status message - changes based on highest priority task -->
+            <div class="progress-status-message">{{ priority_message }}</div>
+            
+            <!-- Quick Action Buttons -->
+            <div class="progress-quick-actions">
+                <button class="button button-primary" onclick="showTaskModal()">Add Task</button>
+                <button class="button button-secondary" onclick="showNoteModal()">Add Note</button>
+                <a href="{{ url_for('show_focus_page') }}" class="button button-success">Start Focus</a>
+            </div>
+        </div>
+
+        <!-- ==== Stats Grid Row 1 ==== -->
+        <!-- Three cards: Tasks, Focus Time, Notes -->
+        <div class="stats-grid margin-bottom-medium">
+            <!-- Today's Tasks Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">Today's Tasks</div>
+                <div class="stats-card-number">{{ active_tasks_count }}</div>
+                <div class="stats-card-label">remaining</div>
+                <a href="{{ url_for('show_tasks_page') }}" class="button button-secondary button-small margin-top-small">View Tasks</a>
+            </div>
+            
+            <!-- Focus Time Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">Focus Time</div>
+                <div class="stats-card-number">{{ focus_minutes_today }}</div>
+                <div class="stats-card-label">min today</div>
+                <a href="{{ url_for('show_focus_page') }}" class="button button-secondary button-small margin-top-small">Go Focus</a>
+            </div>
+            
+            <!-- My Notes Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">My Notes</div>
+                <div class="stats-card-number">{{ total_notes_count }}</div>
+                <div class="stats-card-label">saved</div>
+                <a href="{{ url_for('show_notes_page') }}" class="button button-secondary button-small margin-top-small">View Notes</a>
+            </div>
+        </div>
+
+        <!-- ==== Stats Grid Row 2 ==== -->
+        <!-- Three cards: Points, Budget, Achievements -->
+        <div class="stats-grid margin-bottom-medium">
+            <!-- Focus Points Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">Points</div>
+                <div class="stats-card-number">{{ focus_points }}</div>
+                <div class="stats-card-label">earned</div>
+                <!-- Shop feature disabled - placeholder for future development -->
+                <button class="button button-secondary button-small margin-top-small" disabled style="opacity: 0.5;">Shop Soon (α)</button>
+            </div>
+            
+            <!-- Budget Balance Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">Budget</div>
+                <div class="stats-card-number">£{{ current_balance }}</div>
+                <div class="stats-card-label">balance</div>
+                <a href="{{ url_for('show_budget_page') }}" class="button button-secondary button-small margin-top-small">View Budget</a>
+            </div>
+            
+            <!-- Achievements Card -->
+            <div class="stats-card">
+                <div class="stats-card-heading">Achievements</div>
+                <div class="stats-card-number">{{ unlocked_count }}/5</div>
+                <div class="stats-card-label">unlocked</div>
+                <a href="{{ url_for('show_achievements_page') }}" class="button button-secondary button-small margin-top-small">View All</a>
+            </div>
+        </div>
+
+        <!-- ==== Coming Soon Cards ==== -->
+        <!-- Placeholder cards for features in development -->
+        <div class="stats-grid-two-columns">
+            <div class="stats-card">
+                <div class="stats-card-heading">Flashcards</div>
+                <div class="coming-soon-placeholder">Coming Soon</div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-card-heading">Study</div>
+                <div class="coming-soon-placeholder">Coming Soon</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==== Quick Add Task Modal ==== -->
+    <!-- 
+        Popup form for creating new tasks from dashboard
+        Includes custom date picker (day + month dropdowns)
+        Redirects back to home after submission
+    -->
+    <div class="modal-backdrop" id="quickAddTaskModal">
+        <div class="modal-window">
+            <div class="modal-heading">Add New Task</div>
+            <form action="{{ url_for('handle_add_task') }}" method="POST">
+                <!-- Hidden field tells server to redirect back to home -->
+                <input type="hidden" name="redirect" value="home">
+                
+                <!-- Task Title Input -->
+                <div class="input-group">
+                    <label class="input-label">Task Title</label>
+                    <input type="text" name="title" class="text-input" placeholder="Enter task title" required>
+                </div>
+                
+                <!-- Start Date - Custom day/month picker -->
+                <div class="input-group">
+                    <label class="input-label">From</label>
+                    <div class="date-input-group">
+                        <input type="text" id="taskStartDayInput" class="text-input day-input" maxlength="2" placeholder="DD">
+                        <select id="taskStartMonthInput" class="dropdown-select month-select">
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <!-- Hidden field - populated by JS before submit -->
+                    <input type="hidden" name="start_date" id="taskStartDateHidden">
+                </div>
+                
+                <!-- Deadline Date - Custom day/month picker -->
+                <div class="input-group">
+                    <label class="input-label">Due</label>
+                    <div class="date-input-group">
+                        <input type="text" id="taskDeadlineDayInput" class="text-input day-input" maxlength="2" placeholder="DD">
+                        <select id="taskDeadlineMonthInput" class="dropdown-select month-select">
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="deadline_date" id="taskDeadlineDateHidden">
+                </div>
+                
+                <!-- Priority Selection -->
+                <div class="input-group">
+                    <label class="input-label">Priority</label>
+                    <select name="priority" class="dropdown-select">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>  <!-- Default selection -->
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                
+                <!-- Modal Action Buttons -->
+                <div class="modal-buttons">
+                    <button type="button" class="button button-secondary" onclick="hideTaskModal()">Cancel</button>
+                    <button type="submit" class="button button-primary">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==== Quick Add Note Modal ==== -->
+    <!-- 
+        Popup form for creating new notes from dashboard
+        Simple title and content fields
+        Redirects back to home after submission
+    -->
+    <div class="modal-backdrop" id="quickAddNoteModal">
+        <div class="modal-window">
+            <div class="modal-heading">Add New Note</div>
+            <form action="{{ url_for('handle_add_note') }}" method="POST">
+                <input type="hidden" name="redirect" value="home">
+                
+                <!-- Note Title -->
+                <div class="input-group">
+                    <label class="input-label">Title</label>
+                    <input type="text" name="title" class="text-input" placeholder="Note title" required>
+                </div>
+                
+                <!-- Note Content -->
+                <div class="input-group">
+                    <label class="input-label">Content</label>
+                    <textarea name="content" class="text-area" placeholder="Write your note..." rows="5"></textarea>
+                </div>
+                
+                <!-- Modal Action Buttons -->
+                <div class="modal-buttons">
+                    <button type="button" class="button button-secondary" onclick="hideNoteModal()">Cancel</button>
+                    <button type="submit" class="button button-primary">Save Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==== Flash Messages ==== -->
+    <!-- Server-side notifications rendered by Jinja2 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="toast-notification {{ category }}" id="notificationToast">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ==== JavaScript ==== -->
+    <script>
+        // ==========================================
+        //   TASK MODAL FUNCTIONS
+        // ==========================================
+
+        /**
+         * Show the add task modal
+         * Pre-fills start date with current date for convenience
+         */
+        function showTaskModal() {
+            const currentDate = new Date();
+            // Pre-fill start date fields with today's date
+            document.getElementById('taskStartDayInput').value = currentDate.getDate();
+            document.getElementById('taskStartMonthInput').value = String(currentDate.getMonth() + 1).padStart(2, '0');
+            // Clear deadline fields (user must enter)
+            document.getElementById('taskDeadlineDayInput').value = '';
+            document.getElementById('taskDeadlineMonthInput').value = String(currentDate.getMonth() + 1).padStart(2, '0');
+            // Show modal
+            document.getElementById('quickAddTaskModal').classList.add('active');
+        }
+
+        /**
+         * Hide the task modal
+         */
+        function hideTaskModal() { 
+            document.getElementById('quickAddTaskModal').classList.remove('active'); 
+        }
+
+        // Close modal when clicking backdrop
+        document.getElementById('quickAddTaskModal').addEventListener('click', function(clickEvent) { 
+            if (clickEvent.target === this) hideTaskModal(); 
+        });
+
+        /**
+         * Combine day/month fields into YYYY-MM-DD format before form submission
+         * This prepares the date data for the server to process
+         */
+        document.querySelector('#quickAddTaskModal form').addEventListener('submit', function() {
+            // Process start date
+            const startDay = document.getElementById('taskStartDayInput').value;
+            const startMonth = document.getElementById('taskStartMonthInput').value;
+            if (startDay) {
+                document.getElementById('taskStartDateHidden').value = `2026-${startMonth}-${String(startDay).padStart(2, '0')}`;
+            }
+            // Process deadline date
+            const deadlineDay = document.getElementById('taskDeadlineDayInput').value;
+            const deadlineMonth = document.getElementById('taskDeadlineMonthInput').value;
+            if (deadlineDay) {
+                document.getElementById('taskDeadlineDateHidden').value = `2026-${deadlineMonth}-${String(deadlineDay).padStart(2, '0')}`;
+            }
+        });
+
+        // ==========================================
+        //   NOTE MODAL FUNCTIONS
+        // ==========================================
+
+        /**
+         * Show the add note modal
+         */
+        function showNoteModal() { 
+            document.getElementById('quickAddNoteModal').classList.add('active'); 
+        }
+
+        /**
+         * Hide the note modal
+         */
+        function hideNoteModal() { 
+            document.getElementById('quickAddNoteModal').classList.remove('active'); 
+        }
+
+        // Close modal when clicking backdrop
+        document.getElementById('quickAddNoteModal').addEventListener('click', function(clickEvent) { 
+            if (clickEvent.target === this) hideNoteModal(); 
+        });
+
+        // ==========================================
+        //   TOAST NOTIFICATION
+        // ==========================================
+
+        // Auto-show and hide flash messages
+        const toastElement = document.getElementById('notificationToast');
+        if (toastElement) { 
+            setTimeout(() => toastElement.classList.add('show'), 100); 
+            setTimeout(() => toastElement.classList.remove('show'), 4000); 
+        }
+    </script>
+</body>
+</html>

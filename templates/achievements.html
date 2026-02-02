@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ==== Document Meta & Resources ==== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Achievements - Chronex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ==== Cosmic Background ==== -->
+    <div class="cosmic-background"></div>
+    <div class="stars-decoration"></div>
+
+    <!-- ==== Site Header ==== -->
+    <header class="site-header">
+        <a href="{{ url_for('show_dashboard') }}" class="site-logo">Chronex</a>
+        <nav class="navigation-menu">
+            <a href="{{ url_for('show_dashboard') }}" class="navigation-link">Dashboard</a>
+            <a href="{{ url_for('show_tasks_page') }}" class="navigation-link">Tasks</a>
+            <a href="{{ url_for('show_notes_page') }}" class="navigation-link">Notes</a>
+            <a href="{{ url_for('show_focus_page') }}" class="navigation-link">Focus</a>
+            <a href="{{ url_for('show_budget_page') }}" class="navigation-link">Budget</a>
+            <a href="{{ url_for('show_achievements_page') }}" class="navigation-link active">Achievements</a>  <!-- Current page -->
+        </nav>
+        <div class="header-right-section">
+            <span class="logged-in-username">{{ current_user.username }}</span>
+            <a href="{{ url_for('show_settings_page') }}" class="navigation-link">Settings</a>
+            <a href="{{ url_for('handle_logout') }}" class="navigation-link">Logout</a>
+        </div>
+    </header>
+
+    <!-- ==== Main Content ==== -->
+    <main class="page-content">
+        <!-- Page Header with Progress Count -->
+        <h1 class="page-title">Achievements</h1>
+        <p class="page-subtitle">Track your progress and unlock rewards ({{ unlocked_count }}/5 unlocked)</p>
+
+        <!-- ==== Achievements Grid ==== -->
+        <!-- 
+            Responsive grid layout - auto-fills columns (min 250px each)
+            Each card shows achievement status (locked/unlocked)
+            Visual distinction via opacity and border color
+        -->
+        <div class="achievements-card-grid">
+            
+            <!-- ==== First Steps Achievement ==== -->
+            <!-- Unlocked: When user logs in for the first time -->
+            <div class="achievement-badge-card {{ 'achievement-unlocked' if achievements_status.login else 'achievement-locked' }}">
+                <div class="achievement-title">First Steps</div>
+                <div class="achievement-description">Log in to Chronex for the first time</div>
+                <div class="achievement-unlock-status {{ 'status-complete' if achievements_status.login else 'status-pending' }}">
+                    {{ 'Unlocked!' if achievements_status.login else 'Locked' }}
+                </div>
+            </div>
+
+            <!-- ==== Focus Master Achievement ==== -->
+            <!-- Unlocked: When user completes their first focus session -->
+            <div class="achievement-badge-card {{ 'achievement-unlocked' if achievements_status.focus else 'achievement-locked' }}">
+                <div class="achievement-title">Focus Master</div>
+                <div class="achievement-description">Complete your first focus session</div>
+                <div class="achievement-unlock-status {{ 'status-complete' if achievements_status.focus else 'status-pending' }}">
+                    {{ 'Unlocked!' if achievements_status.focus else 'Locked' }}
+                </div>
+            </div>
+
+            <!-- ==== Task Starter Achievement ==== -->
+            <!-- Unlocked: When user creates their first task -->
+            <div class="achievement-badge-card {{ 'achievement-unlocked' if achievements_status.task else 'achievement-locked' }}">
+                <div class="achievement-title">Task Starter</div>
+                <div class="achievement-description">Create your first task</div>
+                <div class="achievement-unlock-status {{ 'status-complete' if achievements_status.task else 'status-pending' }}">
+                    {{ 'Unlocked!' if achievements_status.task else 'Locked' }}
+                </div>
+            </div>
+
+            <!-- ==== Note Taker Achievement ==== -->
+            <!-- Unlocked: When user creates their first note -->
+            <div class="achievement-badge-card {{ 'achievement-unlocked' if achievements_status.note else 'achievement-locked' }}">
+                <div class="achievement-title">Note Taker</div>
+                <div class="achievement-description">Save your first note</div>
+                <div class="achievement-unlock-status {{ 'status-complete' if achievements_status.note else 'status-pending' }}">
+                    {{ 'Unlocked!' if achievements_status.note else 'Locked' }}
+                </div>
+            </div>
+
+            <!-- ==== Connected Achievement ==== -->
+            <!-- Unlocked: When user adds an email to their account -->
+            <div class="achievement-badge-card {{ 'achievement-unlocked' if achievements_status.email else 'achievement-locked' }}">
+                <div class="achievement-title">Connected</div>
+                <div class="achievement-description">Add an email to your account</div>
+                <div class="achievement-unlock-status {{ 'status-complete' if achievements_status.email else 'status-pending' }}">
+                    {{ 'Unlocked!' if achievements_status.email else 'Locked' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ==== Coming Soon Section ==== -->
+        <!-- Placeholder indicating more achievements will be added -->
+        <div class="content-card margin-top-medium">
+            <div class="card-heading">More Achievements Coming Soon</div>
+            <p class="text-faded">New achievements will be added in future updates. Keep using Chronex to unlock them all!</p>
+        </div>
+    </main>
+
+    <!-- ==== Flash Messages ==== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="toast-notification {{ category }}" id="notificationToast">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ==== JavaScript ==== -->
+    <script>
+        // ==========================================
+        //   TOAST NOTIFICATION
+        // ==========================================
+        
+        // Auto-show and hide flash messages
+        const toastElement = document.getElementById('notificationToast');
+        if (toastElement) {
+            setTimeout(() => toastElement.classList.add('show'), 100);
+            setTimeout(() => toastElement.classList.remove('show'), 4000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ==== Document Meta & Resources ==== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Budget - Chronex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ==== Cosmic Background ==== -->
+    <div class="cosmic-background"></div>
+    <div class="stars-decoration"></div>
+
+    <!-- ==== Site Header ==== -->
+    <header class="site-header">
+        <a href="{{ url_for('show_dashboard') }}" class="site-logo">Chronex</a>
+        <nav class="navigation-menu">
+            <a href="{{ url_for('show_dashboard') }}" class="navigation-link">Dashboard</a>
+            <a href="{{ url_for('show_tasks_page') }}" class="navigation-link">Tasks</a>
+            <a href="{{ url_for('show_notes_page') }}" class="navigation-link">Notes</a>
+            <a href="{{ url_for('show_focus_page') }}" class="navigation-link">Focus</a>
+            <a href="{{ url_for('show_budget_page') }}" class="navigation-link active">Budget</a>  <!-- Current page -->
+            <a href="{{ url_for('show_achievements_page') }}" class="navigation-link">Achievements</a>
+        </nav>
+        <div class="header-right-section">
+            <span class="logged-in-username">{{ current_user.username }}</span>
+            <a href="{{ url_for('show_settings_page') }}" class="navigation-link">Settings</a>
+            <a href="{{ url_for('handle_logout') }}" class="navigation-link">Logout</a>
+        </div>
+    </header>
+
+    <!-- ==== Main Content ==== -->
+    <main class="page-content">
+        <h1 class="page-title">Budget Tracker</h1>
+        <p class="page-subtitle">Manage your income and expenses</p>
+
+        <!-- ==== Budget Summary Cards ==== -->
+        <!-- 
+            Three cards showing financial overview
+            Income (green), Expenses (red), Balance (neutral)
+            Values populated from server-side calculations
+        -->
+        <div class="budget-summary-cards">
+            <!-- Total Income Card -->
+            <div class="budget-stat-card">
+                <div class="budget-stat-label">Total Income</div>
+                <div class="budget-stat-value income-amount">£{{ total_income }}</div>
+            </div>
+            
+            <!-- Total Expenses Card -->
+            <div class="budget-stat-card">
+                <div class="budget-stat-label">Total Expenses</div>
+                <div class="budget-stat-value expense-amount">£{{ total_expenses }}</div>
+            </div>
+            
+            <!-- Current Balance Card -->
+            <div class="budget-stat-card">
+                <div class="budget-stat-label">Current Balance</div>
+                <div class="budget-stat-value balance-amount">£{{ current_balance }}</div>
+            </div>
+        </div>
+
+        <!-- ==== Quick Stats Card ==== -->
+        <!-- 
+            Displays weekly/monthly spending summaries
+            Also shows savings goal progress if one is set
+        -->
+        <div class="content-card margin-bottom-medium">
+            <div class="card-heading">Quick Stats</div>
+            
+            <!-- Weekly Expenses Row -->
+            <div class="settings-item-row">
+                <span class="settings-item-label">This Week's Expenses</span>
+                <span class="settings-item-value expense-amount">£{{ weekly_expenses }}</span>
+            </div>
+            
+            <!-- Monthly Expenses Row -->
+            <div class="settings-item-row">
+                <span class="settings-item-label">This Month's Expenses</span>
+                <span class="settings-item-value expense-amount">£{{ monthly_expenses }}</span>
+            </div>
+            
+            <!-- Savings Goal Section - Only displayed if user has set a goal -->
+            {% if current_user.savings_goal_target %}
+            <div class="settings-item-row">
+                <span class="settings-item-label">Savings Goal: {{ current_user.savings_goal_name }}</span>
+                <span class="settings-item-value">£{{ current_user.savings_goal_target }}</span>
+            </div>
+            
+            <!-- Estimated Time to Goal - Calculated server-side based on average savings -->
+            {% if estimated_months_to_goal is not none %}
+            <div class="settings-item-row">
+                <span class="settings-item-label">Estimated Time to Goal</span>
+                <span class="settings-item-value text-success-color">
+                    {% if estimated_months_to_goal == 0 %}Goal Reached!{% else %}{{ estimated_months_to_goal }} months{% endif %}
+                </span>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <!-- ==== Action Buttons ==== -->
+        <!-- Quick access to add transactions and set savings goal -->
+        <div class="budget-action-buttons">
+            <button class="button button-success" onclick="showTransactionModal('income')">Add Income</button>
+            <button class="button button-danger" onclick="showTransactionModal('expense')">Add Expense</button>
+            <button class="button button-secondary" onclick="showSavingsGoalModal()">Set Goal</button>
+        </div>
+
+        <!-- ==== Recent Transactions List ==== -->
+        <!-- 
+            Displays transaction history in chronological order
+            Each row shows description, category, date, and amount
+            Amount color-coded: green for income, red for expense
+        -->
+        <div class="transactions-container">
+            <div class="card-heading">Recent Transactions</div>
+            
+            {% if recent_transactions %}
+                <!-- Loop through transactions from server -->
+                {% for transaction in recent_transactions %}
+                <div class="transaction-row">
+                    <!-- Transaction Details (left side) -->
+                    <div class="transaction-details">
+                        <div class="transaction-description">{{ transaction.transaction_description }}</div>
+                        <!-- Category and date separated by middle dot -->
+                        <div class="transaction-category-date">{{ transaction.transaction_category }} · {{ transaction.transaction_date.strftime('%d %b %Y') }}</div>
+                    </div>
+                    
+                    <!-- Transaction Amount (right side) -->
+                    <!-- Uses conditional class for color: income-amount (green) or expense-amount (red) -->
+                    <div class="transaction-amount-display {{ 'income-amount' if transaction.transaction_type == 'income' else 'expense-amount' }}">
+                        {{ '+' if transaction.transaction_type == 'income' else '-' }}£{{ transaction.transaction_amount }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Empty State - shown when no transactions exist -->
+                <div class="empty-state-message">
+                    <div class="empty-state-heading">No transactions yet</div>
+                    <p class="text-faded">Add your first income or expense to start tracking</p>
+                </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- ==== Add Transaction Modal ==== -->
+    <!-- 
+        Reusable modal for adding both income and expenses
+        Transaction type set via hidden field by JavaScript
+        Modal heading changes based on type
+    -->
+    <div class="modal-backdrop" id="addTransactionModal">
+        <div class="modal-window">
+            <div class="modal-heading" id="transactionModalHeading">Add Transaction</div>
+            
+            <form action="{{ url_for('handle_add_transaction') }}" method="POST">
+                <!-- Hidden field determines if income or expense -->
+                <input type="hidden" name="type" id="transactionTypeHidden" value="income">
+                
+                <!-- Description Input -->
+                <div class="input-group">
+                    <label class="input-label">Description</label>
+                    <input type="text" name="description" class="text-input" placeholder="What was this for?" required>
+                </div>
+                
+                <!-- Amount Input - Allows decimals with step="0.01" -->
+                <div class="input-group">
+                    <label class="input-label">Amount (£)</label>
+                    <input type="number" name="amount" class="text-input" step="0.01" min="0.01" placeholder="0.00" required>
+                </div>
+                
+                <!-- Category Selection -->
+                <div class="input-group">
+                    <label class="input-label">Category</label>
+                    <select name="category" class="dropdown-select">
+                        <option value="General">General</option>
+                        <option value="Food">Food</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Bills">Bills</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <!-- Modal Action Buttons -->
+                <div class="modal-buttons">
+                    <button type="button" class="button button-secondary" onclick="hideTransactionModal()">Cancel</button>
+                    <button type="submit" class="button button-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==== Savings Goal Modal ==== -->
+    <!-- 
+        Set or update savings target
+        Pre-fills existing goal data if one exists
+    -->
+    <div class="modal-backdrop" id="savingsGoalModal">
+        <div class="modal-window">
+            <div class="modal-heading">Set Savings Goal</div>
+            
+            <form action="{{ url_for('handle_set_goal') }}" method="POST">
+                <!-- Goal Name Input -->
+                <div class="input-group">
+                    <label class="input-label">Goal Name</label>
+                    <input type="text" name="name" class="text-input" placeholder="e.g., New Laptop, Holiday" value="{{ current_user.savings_goal_name if current_user.savings_goal_name else '' }}" required>
+                </div>
+                
+                <!-- Target Amount Input -->
+                <div class="input-group">
+                    <label class="input-label">Target Amount (£)</label>
+                    <input type="number" name="target" class="text-input" step="0.01" min="1" placeholder="0.00" value="{{ current_user.savings_goal_target if current_user.savings_goal_target else '' }}" required>
+                </div>
+                
+                <!-- Modal Action Buttons -->
+                <div class="modal-buttons">
+                    <button type="button" class="button button-secondary" onclick="hideSavingsGoalModal()">Cancel</button>
+                    <button type="submit" class="button button-primary">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==== Flash Messages ==== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="toast-notification {{ category }}" id="notificationToast">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- ==== JavaScript ==== -->
+    <script>
+        // ==========================================
+        //   TRANSACTION MODAL FUNCTIONS
+        // ==========================================
+
+        /**
+         * Show the add transaction modal
+         * Configures modal for either income or expense
+         * @param {string} transactionType - 'income' or 'expense'
+         */
+        function showTransactionModal(transactionType) {
+            // Set hidden field value for form submission
+            document.getElementById('transactionTypeHidden').value = transactionType;
+            
+            // Update modal heading based on type
+            document.getElementById('transactionModalHeading').textContent = 
+                transactionType === 'income' ? 'Add Income' : 'Add Expense';
+            
+            // Show modal
+            document.getElementById('addTransactionModal').classList.add('active');
+        }
+
+        /**
+         * Hide the transaction modal
+         */
+        function hideTransactionModal() {
+            document.getElementById('addTransactionModal').classList.remove('active');
+        }
+
+        // ==========================================
+        //   SAVINGS GOAL MODAL FUNCTIONS
+        // ==========================================
+
+        /**
+         * Show the savings goal modal
+         */
+        function showSavingsGoalModal() {
+            document.getElementById('savingsGoalModal').classList.add('active');
+        }
+
+        /**
+         * Hide the savings goal modal
+         */
+        function hideSavingsGoalModal() {
+            document.getElementById('savingsGoalModal').classList.remove('active');
+        }
+
+        // ==========================================
+        //   EVENT LISTENERS
+        // ==========================================
+
+        // Close modals when clicking backdrop (outside modal content)
+        document.getElementById('addTransactionModal').addEventListener('click', function(clickEvent) {
+            if (clickEvent.target === this) hideTransactionModal();
+        });
+
+        document.getElementById('savingsGoalModal').addEventListener('click', function(clickEvent) {
+            if (clickEvent.target === this) hideSavingsGoalModal();
+        });
+
+        // ==========================================
+        //   TOAST NOTIFICATION
+        // ==========================================
+
+        const toastElement = document.getElementById('notificationToast');
+        if (toastElement) {
+            setTimeout(() => toastElement.classList.add('show'), 100);
+            setTimeout(() => toastElement.classList.remove('show'), 4000);
+        }
+    </script>
+</body>
+</html>
